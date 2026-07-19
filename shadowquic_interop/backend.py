@@ -87,6 +87,10 @@ class DockerBackend:
             timeout=600,
         )
         self.commands.run(
+            ["docker", "pull", "ghcr.io/watfaq/clash-rs:latest"],
+            timeout=600,
+        )
+        self.commands.run(
             [
                 "docker",
                 "build",

@@ -11,11 +11,16 @@ The runnable matrix currently contains:
 | shadowquic | yes | yes | `ghcr.io/spongebob888/shadowquic:latest` |
 | QuicProxy | yes | yes | Built from upstream `master` |
 | mihomo Meta | yes | yes | Built from upstream `Meta` |
+| clash-rs | yes | no | `ghcr.io/watfaq/clash-rs:latest` |
 
 Mihomo is built explicitly from its
 [`Meta` branch](https://github.com/MetaCubeX/mihomo/tree/Meta). That branch
 contains the ShadowQUIC outbound and listener implementations; the `main`
 branch does not currently expose them.
+
+Clash-rs participates as a client only. Its published image includes the
+ShadowQUIC outbound in the default feature set, but clash-rs does not provide a
+ShadowQUIC server implementation.
 
 The specification's ProxyPen link contains a username typo. The runner builds
 the active project at
@@ -109,7 +114,8 @@ the scheduled result commit.
 
 Endpoint metadata and config renderers live in
 `shadowquic_interop/adapters.py`. Mihomo Meta, QuicProxy, and ProxyPen build
-definitions live under `docker/`. Their default refs intentionally track
+definitions live under `docker/`; shadowquic and clash-rs use their published
+images. The default refs intentionally track
 upstream for daily compatibility testing; pass Docker build arguments such as
 `--build-arg MIHOMO_REF=<tag-or-branch>` or
 `--build-arg QUICPROXY_REF=<tag-or-branch>` when reproducing an older build.

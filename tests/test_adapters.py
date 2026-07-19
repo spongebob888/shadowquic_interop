@@ -61,6 +61,33 @@ class AdapterTests(unittest.TestCase):
         self.assertIn('server: "mihomo-server"', client)
         self.assertIn("- MATCH,shadowquic-interop", client)
 
+    def test_clash_rs_config_enables_client_only(self) -> None:
+        implementation = IMPLEMENTATIONS["clash-rs"]
+        self.assertTrue(implementation.client)
+        self.assertFalse(implementation.server)
+        self.assertEqual(implementation.command(), ["-c", "/config/config.yaml"])
+        with self.assertRaisesRegex(ValueError, "no ShadowQUIC server adapter"):
+            implementation.render_server()
+
+        client = implementation.render_client("clash-rs-server")
+        self.assertIn(
+            "type: socks\n"
+            "    listen: 0.0.0.0\n"
+            "    allow-lan: true\n"
+            f"    port: {SOCKS_PORT}\n"
+            "    udp: true",
+            client,
+        )
+        self.assertIn(f"port: {SOCKS_PORT}", client)
+        self.assertIn("type: shadowquic", client)
+        self.assertIn('server: "clash-rs-server"', client)
+        self.assertIn(f"port: {SERVER_PORT}", client)
+        self.assertIn(f'username: "{USERNAME}"', client)
+        self.assertIn(f'password: "{PASSWORD}"', client)
+        self.assertIn("server-name: \"cloudflare.com\"", client)
+        self.assertIn("- 127.0.0.11", client)
+        self.assertIn("- MATCH,shadowquic-interop", client)
+
     def test_selection_rejects_unknown_keys(self) -> None:
         with self.assertRaisesRegex(ValueError, "unknown implementations"):
             select_implementations(["missing"])

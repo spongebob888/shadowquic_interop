@@ -32,7 +32,7 @@ class FakeBackend:
 
 
 class RunnerTests(unittest.TestCase):
-    def test_matrix_runs_all_meta_branch_cells(self) -> None:
+    def test_matrix_runs_client_only_implementations_against_supported_servers(self) -> None:
         backend = FakeBackend()
         implementations = list(IMPLEMENTATIONS.values())
         result = InteropRunner(backend).run(
@@ -44,9 +44,21 @@ class RunnerTests(unittest.TestCase):
             build=False,
         )
         self.assertFalse(backend.prepared)
-        self.assertEqual(len(result.results), 9)
-        self.assertEqual(len(backend.calls), 9)
-        self.assertTrue(all(cell.status == Status.PASS for cell in result.results))
+        self.assertEqual(len(result.results), 16)
+        self.assertEqual(len(backend.calls), 12)
+        unsupported = [
+            cell for cell in result.results if cell.status == Status.UNSUPPORTED
+        ]
+        self.assertEqual(len(unsupported), 4)
+        self.assertTrue(all(cell.server == "clash-rs" for cell in unsupported))
+        self.assertEqual(
+            {call["server"].key for call in backend.calls},
+            {"shadowquic", "quicproxy", "mihomo"},
+        )
+        self.assertEqual(
+            {call["client"].key for call in backend.calls},
+            {"shadowquic", "quicproxy", "mihomo", "clash-rs"},
+        )
 
     def test_result_round_trip(self) -> None:
         backend = FakeBackend()

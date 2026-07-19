@@ -60,6 +60,8 @@ class Implementation:
             return _quicproxy_client(server_host)
         if self.key == "mihomo":
             return _mihomo_client(server_host)
+        if self.key == "clash-rs":
+            return _clash_rs_client(server_host)
         raise ValueError(f"{self.name} has no ShadowQUIC client adapter")
 
 
@@ -85,6 +87,15 @@ IMPLEMENTATIONS: dict[str, Implementation] = {
         image="shadowquic-interop/mihomo-meta:latest",
         config_format="yaml",
         note="Built from the upstream Meta branch, which includes ShadowQUIC outbound and listener support.",
+    ),
+    "clash-rs": Implementation(
+        key="clash-rs",
+        name="clash-rs",
+        source="https://github.com/Watfaq/clash-rs",
+        image="ghcr.io/watfaq/clash-rs:latest",
+        config_format="yaml",
+        server=False,
+        note="ShadowQUIC is supported as an outbound only; clash-rs has no ShadowQUIC server adapter.",
     ),
 }
 
@@ -287,6 +298,46 @@ dns:
   nameserver:
     - 127.0.0.11
   proxy-server-nameserver:
+    - 127.0.0.11
+rules:
+  - MATCH,shadowquic-interop
+"""
+
+
+def _clash_rs_client(server_host: str) -> str:
+    return f"""mode: rule
+log-level: info
+ipv6: false
+allow-lan: true
+bind-address: "*"
+listeners:
+  - name: shadowquic-interop-socks
+    type: socks
+    listen: 0.0.0.0
+    allow-lan: true
+    port: {SOCKS_PORT}
+    udp: true
+proxies:
+  - name: shadowquic-interop
+    type: shadowquic
+    server: "{server_host}"
+    port: {SERVER_PORT}
+    username: "{USERNAME}"
+    password: "{PASSWORD}"
+    server-name: "{SNI}"
+    alpn: ["h3"]
+    congestion-control: cubic
+    zero-rtt: true
+    over-stream: false
+    initial-mtu: 1300
+    min-mtu: 1290
+    keep-alive-interval: 10000
+    gso: false
+    mtu-discovery: true
+dns:
+  enable: true
+  ipv6: false
+  nameserver:
     - 127.0.0.11
 rules:
   - MATCH,shadowquic-interop

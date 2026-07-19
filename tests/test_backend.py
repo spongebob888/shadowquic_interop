@@ -75,7 +75,7 @@ class PartialCellTests(unittest.TestCase):
 
 
 class PrepareTests(unittest.TestCase):
-    def test_builds_mihomo_from_explicit_meta_dockerfile(self) -> None:
+    def test_prepares_endpoint_images(self) -> None:
         class RecordingCommands:
             def __init__(self) -> None:
                 self.calls = []
@@ -94,6 +94,10 @@ class PrepareTests(unittest.TestCase):
                 and "shadowquic-interop/mihomo-meta:latest" in call
                 for call in flattened
             )
+        )
+        self.assertIn(
+            "docker pull ghcr.io/watfaq/clash-rs:latest",
+            flattened,
         )
 
 

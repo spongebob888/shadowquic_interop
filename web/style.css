@@ -251,7 +251,7 @@ table {
 
 th,
 td {
-  height: 104px;
+  height: 116px;
   padding: 10px;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
@@ -298,7 +298,7 @@ thead th {
 
 .cell-button {
   width: 100%;
-  min-height: 76px;
+  min-height: 88px;
   border: 1px solid transparent;
   border-radius: 4px;
   cursor: pointer;
@@ -325,6 +325,34 @@ thead th {
   font-weight: 760;
   text-transform: uppercase;
 }
+
+.probe-badges {
+  min-height: 18px;
+  margin-top: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.probe-badge {
+  min-width: 26px;
+  height: 18px;
+  padding: 0 4px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.probe-badge.pass { color: var(--pass); background: var(--pass-bg); }
+.probe-badge.fail { color: var(--fail); background: var(--fail-bg); }
+.probe-badge.error { color: var(--error); background: var(--error-bg); }
+.probe-badge.unsupported { color: var(--unsupported); background: var(--unsupported-bg); }
 
 .cell-button.pass { color: var(--pass); background: var(--pass-bg); }
 .cell-button.fail { color: var(--fail); background: var(--fail-bg); }

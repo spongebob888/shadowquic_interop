@@ -32,6 +32,16 @@ class AdapterTests(unittest.TestCase):
             client["outbounds"]["servers"]["shadowquic"]["address"], "sq-server"
         )
         self.assertEqual(
+            client["outbounds"]["servers"]["shadowquic"]["dns"], "docker_dns"
+        )
+        self.assertEqual(
+            client["dns"]["servers"]["docker_dns"]["address"], "127.0.0.11"
+        )
+        self.assertEqual(
+            client["dns"]["servers"]["docker_dns"]["outbound"], "direct"
+        )
+        self.assertEqual(client["outbounds"]["servers"]["direct"]["type"], "direct")
+        self.assertEqual(
             client["outbounds"]["servers"]["shadowquic"]["tls"]["jls_password"],
             PASSWORD,
         )

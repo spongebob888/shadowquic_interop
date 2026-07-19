@@ -186,6 +186,7 @@ def _quicproxy_client(server_host: str) -> str:
                         "type": "shadowquic",
                         "address": server_host,
                         "port": SERVER_PORT,
+                        "dns": "docker_dns",
                         "idle_timeout": 60,
                         "udp_mod": "datagram",
                         "mtu_discoveriy": False,
@@ -199,11 +200,12 @@ def _quicproxy_client(server_host: str) -> str:
                             "sni": SNI,
                             "alpn": ["h3"],
                         },
-                    }
+                    },
+                    "direct": {"type": "direct"},
                 },
             },
             "router": {"default_mode": "proxy"},
-            "dns": _quicproxy_dns("shadowquic"),
+            "dns": _quicproxy_docker_dns(),
             "log": {"level": "info", "color": False},
         }
     )
@@ -220,6 +222,20 @@ def _quicproxy_dns(outbound: str) -> dict[str, object]:
                 "timeout": 10,
                 "outbound": outbound,
                 "strategy": "ipv4_only",
+            }
+        },
+    }
+
+
+def _quicproxy_docker_dns() -> dict[str, object]:
+    return {
+        "default_server": "docker_dns",
+        "servers": {
+            "docker_dns": {
+                "type": "udp",
+                "address": "127.0.0.11",
+                "port": 53,
+                "outbound": "direct",
             }
         },
     }

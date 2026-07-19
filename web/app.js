@@ -109,6 +109,12 @@
   function createCellButton(cell, implementations, protocol) {
     const status = statusFor(cell, protocol);
     const view = statusView[status] || statusView.error;
+    const visibleProbes = protocol === "all"
+      ? cell.probes
+      : cell.probes.filter((probe) => probe.protocol === protocol);
+    const probeSummary = visibleProbes
+      .map((probe) => `${probeLabel(probe.protocol)} ${statusView[probe.status]?.label || probe.status}`)
+      .join(", ");
     const button = document.createElement("button");
     button.type = "button";
     button.className = `cell-button ${status}`;
@@ -117,7 +123,7 @@
       "aria-label",
       `${implementations.get(cell.client)?.name || cell.client} client to ${
         implementations.get(cell.server)?.name || cell.server
-      } server: ${view.label}`,
+      } server: ${view.label}. ${probeSummary}`,
     );
     const symbol = document.createElement("span");
     symbol.className = "symbol";
@@ -126,7 +132,16 @@
     const label = document.createElement("span");
     label.className = "status-label";
     label.textContent = view.label;
-    button.append(symbol, label);
+    const badges = document.createElement("span");
+    badges.className = "probe-badges";
+    badges.setAttribute("aria-hidden", "true");
+    for (const probe of visibleProbes) {
+      const badge = document.createElement("span");
+      badge.className = `probe-badge ${probe.status}`;
+      badge.textContent = probeLabel(probe.protocol);
+      badges.append(badge);
+    }
+    button.append(symbol, label, badges);
     button.addEventListener("click", () => showDetails(cell, implementations, protocol));
     return button;
   }
@@ -227,6 +242,10 @@
     return cell.probes.find((probe) => probe.protocol === protocol)?.status || "error";
   }
 
+  function probeLabel(protocol) {
+    return protocol === "http2" ? "H2" : "H3";
+  }
+
   function updateLocation(runId, protocol) {
     const query = new URLSearchParams();
     query.set("run", runId);
@@ -265,4 +284,3 @@
     return [...new Set(values)];
   }
 })();
-

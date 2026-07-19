@@ -32,7 +32,7 @@ class FakeBackend:
 
 
 class RunnerTests(unittest.TestCase):
-    def test_matrix_runs_supported_cell_and_retains_unsupported_cells(self) -> None:
+    def test_matrix_runs_all_meta_branch_cells(self) -> None:
         backend = FakeBackend()
         implementations = list(IMPLEMENTATIONS.values())
         result = InteropRunner(backend).run(
@@ -45,14 +45,8 @@ class RunnerTests(unittest.TestCase):
         )
         self.assertFalse(backend.prepared)
         self.assertEqual(len(result.results), 9)
-        self.assertEqual(len(backend.calls), 4)
-        mihomo_cells = [
-            cell
-            for cell in result.results
-            if "mihomo" in (cell.client, cell.server)
-        ]
-        self.assertEqual(len(mihomo_cells), 5)
-        self.assertTrue(all(cell.status == Status.UNSUPPORTED for cell in mihomo_cells))
+        self.assertEqual(len(backend.calls), 9)
+        self.assertTrue(all(cell.status == Status.PASS for cell in result.results))
 
     def test_result_round_trip(self) -> None:
         backend = FakeBackend()
@@ -75,4 +69,3 @@ class RunnerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

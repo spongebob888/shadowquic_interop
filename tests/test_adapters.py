@@ -46,11 +46,20 @@ class AdapterTests(unittest.TestCase):
             PASSWORD,
         )
 
-    def test_mihomo_is_explicitly_unsupported(self) -> None:
+    def test_mihomo_meta_configs_enable_client_and_server(self) -> None:
         implementation = IMPLEMENTATIONS["mihomo"]
-        self.assertFalse(implementation.client)
-        self.assertFalse(implementation.server)
-        self.assertIn("does not implement", implementation.note or "")
+        self.assertTrue(implementation.client)
+        self.assertTrue(implementation.server)
+        self.assertIn("/tree/Meta", implementation.source)
+        self.assertEqual(implementation.command(), ["-f", "/config/config.yaml"])
+        server = implementation.render_server()
+        client = implementation.render_client("mihomo-server")
+        self.assertIn("type: shadowquic", server)
+        self.assertIn(f"port: {SERVER_PORT}", server)
+        self.assertIn("- MATCH,DIRECT", server)
+        self.assertIn(f"socks-port: {SOCKS_PORT}", client)
+        self.assertIn('server: "mihomo-server"', client)
+        self.assertIn("- MATCH,shadowquic-interop", client)
 
     def test_selection_rejects_unknown_keys(self) -> None:
         with self.assertRaisesRegex(ValueError, "unknown implementations"):

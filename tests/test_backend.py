@@ -74,5 +74,28 @@ class PartialCellTests(unittest.TestCase):
         self.assertEqual(result.probes[1].message, "HTTP/3 probe timed out")
 
 
+class PrepareTests(unittest.TestCase):
+    def test_builds_mihomo_from_explicit_meta_dockerfile(self) -> None:
+        class RecordingCommands:
+            def __init__(self) -> None:
+                self.calls = []
+
+            def run(self, args, *, timeout, check=True):
+                command = list(args)
+                self.calls.append(command)
+                return CommandResult(command, 0, "", "")
+
+        commands = RecordingCommands()
+        DockerBackend(command_runner=commands).prepare()
+        flattened = [" ".join(call) for call in commands.calls]
+        self.assertTrue(
+            any(
+                "docker/mihomo-meta.Dockerfile" in call
+                and "shadowquic-interop/mihomo-meta:latest" in call
+                for call in flattened
+            )
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

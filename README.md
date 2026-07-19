@@ -10,12 +10,12 @@ The runnable matrix currently contains:
 | --- | :---: | :---: | --- |
 | shadowquic | yes | yes | `ghcr.io/spongebob888/shadowquic:latest` |
 | QuicProxy | yes | yes | Built from upstream `master` |
-| mihomo | no | no | Retained as unsupported |
+| mihomo Meta | yes | yes | Built from upstream `Meta` |
 
-Current upstream mihomo has no ShadowQUIC outbound or listener. Its row and
-column are intentionally present and marked `unsupported`; treating it as a
-failure or pretending another QUIC protocol is equivalent would make the
-matrix misleading. The adapter can be enabled when upstream adds the protocol.
+Mihomo is built explicitly from its
+[`Meta` branch](https://github.com/MetaCubeX/mihomo/tree/Meta). That branch
+contains the ShadowQUIC outbound and listener implementations; the `main`
+branch does not currently expose them.
 
 The specification's ProxyPen link contains a username typo. The runner builds
 the active project at
@@ -34,6 +34,7 @@ Each runnable client/server pair gets a private Docker bridge network:
 `pass`, `fail`, `error`, and `unsupported` are distinct. A protocol failure
 means ProxyPen reached the test path and rejected the result. An error means
 the harness, image, or endpoint failed before it could produce a valid probe.
+`unsupported` remains part of the schema for future capability differences.
 
 ## Requirements
 
@@ -107,8 +108,8 @@ the scheduled result commit.
 ## Endpoint maintenance
 
 Endpoint metadata and config renderers live in
-`shadowquic_interop/adapters.py`. QuicProxy and ProxyPen build definitions live
-under `docker/`. Their default refs intentionally track upstream for daily
-compatibility testing; pass Docker build arguments such as
+`shadowquic_interop/adapters.py`. Mihomo Meta, QuicProxy, and ProxyPen build
+definitions live under `docker/`. Their default refs intentionally track
+upstream for daily compatibility testing; pass Docker build arguments such as
+`--build-arg MIHOMO_REF=<tag-or-branch>` or
 `--build-arg QUICPROXY_REF=<tag-or-branch>` when reproducing an older build.
-

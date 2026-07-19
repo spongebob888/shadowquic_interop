@@ -40,6 +40,8 @@ class Implementation:
         )
 
     def command(self) -> list[str]:
+        if self.key == "mihomo":
+            return ["-f", f"/config/{self.config_name}"]
         return ["-c", f"/config/{self.config_name}"]
 
     def render_server(self) -> str:
@@ -47,6 +49,8 @@ class Implementation:
             return _shadowquic_server()
         if self.key == "quicproxy":
             return _quicproxy_server()
+        if self.key == "mihomo":
+            return _mihomo_server()
         raise ValueError(f"{self.name} has no ShadowQUIC server adapter")
 
     def render_client(self, server_host: str) -> str:
@@ -54,6 +58,8 @@ class Implementation:
             return _shadowquic_client(server_host)
         if self.key == "quicproxy":
             return _quicproxy_client(server_host)
+        if self.key == "mihomo":
+            return _mihomo_client(server_host)
         raise ValueError(f"{self.name} has no ShadowQUIC client adapter")
 
 
@@ -74,16 +80,11 @@ IMPLEMENTATIONS: dict[str, Implementation] = {
     ),
     "mihomo": Implementation(
         key="mihomo",
-        name="mihomo",
-        source="https://github.com/MetaCubeX/mihomo",
-        image="docker.io/metacubex/mihomo:latest",
+        name="mihomo Meta",
+        source="https://github.com/MetaCubeX/mihomo/tree/Meta",
+        image="shadowquic-interop/mihomo-meta:latest",
         config_format="yaml",
-        client=False,
-        server=False,
-        note=(
-            "The current upstream does not implement a ShadowQUIC proxy or listener. "
-            "The endpoint remains in the matrix and will become runnable when upstream adds it."
-        ),
+        note="Built from the upstream Meta branch, which includes ShadowQUIC outbound and listener support.",
     ),
 }
 
@@ -225,6 +226,71 @@ def _quicproxy_dns(outbound: str) -> dict[str, object]:
             }
         },
     }
+
+
+def _mihomo_server() -> str:
+    return f"""mode: rule
+log-level: info
+ipv6: false
+allow-lan: true
+bind-address: \"*\"
+listeners:
+  - name: shadowquic-interop
+    type: shadowquic
+    listen: 0.0.0.0
+    port: {SERVER_PORT}
+    users:
+      - username: \"{USERNAME}\"
+        password: \"{PASSWORD}\"
+    jls-upstream:
+      addr: \"{SNI}:443\"
+      sni: \"{SNI}\"
+    alpn: [\"h3\"]
+    quic-versions: [v1]
+    zero-rtt: true
+    congestion-controller: cubic
+    disable-mtu-discovery: false
+dns:
+  enable: true
+  ipv6: false
+  nameserver:
+    - 1.1.1.1
+rules:
+  - MATCH,DIRECT
+"""
+
+
+def _mihomo_client(server_host: str) -> str:
+    return f"""mode: rule
+log-level: info
+ipv6: false
+allow-lan: true
+bind-address: \"*\"
+socks-port: {SOCKS_PORT}
+proxies:
+  - name: shadowquic-interop
+    type: shadowquic
+    server: \"{server_host}\"
+    port: {SERVER_PORT}
+    username: \"{USERNAME}\"
+    password: \"{PASSWORD}\"
+    sni: \"{SNI}\"
+    alpn: [\"h3\"]
+    quic-versions: [v1]
+    udp-over-stream: false
+    zero-rtt: true
+    congestion-controller: cubic
+    disable-mtu-discovery: false
+dns:
+  enable: true
+  ipv6: false
+  nameserver:
+    - 127.0.0.11
+  proxy-server-nameserver:
+    - 127.0.0.11
+rules:
+  - MATCH,shadowquic-interop
+"""
 
 
 def _quicproxy_docker_dns() -> dict[str, object]:

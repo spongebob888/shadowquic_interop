@@ -105,6 +105,19 @@ class DockerBackend:
                 "build",
                 "--pull",
                 "-f",
+                "docker/mihomo-meta.Dockerfile",
+                "-t",
+                "shadowquic-interop/mihomo-meta:latest",
+                ".",
+            ],
+            timeout=1800,
+        )
+        self.commands.run(
+            [
+                "docker",
+                "build",
+                "--pull",
+                "-f",
                 "docker/proxypen.Dockerfile",
                 "-t",
                 PROXYPEN_IMAGE,

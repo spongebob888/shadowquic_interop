@@ -1,0 +1,315 @@
+{
+  "finished_at": "2026-07-19T05:20:53.176394Z",
+  "implementations": [
+    {
+      "client": true,
+      "image": "ghcr.io/spongebob888/shadowquic:latest",
+      "key": "shadowquic",
+      "name": "shadowquic",
+      "note": null,
+      "server": true,
+      "source": "https://github.com/spongebob888/shadowquic"
+    },
+    {
+      "client": true,
+      "image": "shadowquic-interop/quicproxy:latest",
+      "key": "quicproxy",
+      "name": "QuicProxy",
+      "note": null,
+      "server": true,
+      "source": "https://github.com/RealBikiniBottom/QuicProxy"
+    },
+    {
+      "client": false,
+      "image": "docker.io/metacubex/mihomo:latest",
+      "key": "mihomo",
+      "name": "mihomo",
+      "note": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+      "server": false,
+      "source": "https://github.com/MetaCubeX/mihomo"
+    }
+  ],
+  "protocols": [
+    "http2",
+    "http3"
+  ],
+  "results": [
+    {
+      "client": "shadowquic",
+      "duration_ms": 3365,
+      "log_dir": "work/shadowquic_shadowquic/logs",
+      "message": null,
+      "probes": [
+        {
+          "duration_ms": 107,
+          "http_status": 301,
+          "message": null,
+          "metrics": {
+            "size": 167,
+            "socks": 50,
+            "tls": 10,
+            "ttfb": 107
+          },
+          "output": "Testing proxy socks5://sq-client-be76ae131f:1080 -> cloudflare.com:443\n\n[HTTP/2]   OK 301 (107ms) socks:50ms tls:10ms ttfb:107ms size:167B\n",
+          "protocol": "http2",
+          "status": "pass"
+        },
+        {
+          "duration_ms": 84,
+          "http_status": 301,
+          "message": null,
+          "metrics": {
+            "size": 167,
+            "socks": 41,
+            "tls": 15,
+            "ttfb": 84
+          },
+          "output": "Testing proxy socks5://sq-client-be76ae131f:1080 -> cloudflare.com:443\n\n[HTTP/3]   OK 301 (84ms) socks:41ms tls:15ms ttfb:84ms size:167B\n",
+          "protocol": "http3",
+          "status": "pass"
+        }
+      ],
+      "server": "shadowquic",
+      "status": "pass"
+    },
+    {
+      "client": "shadowquic",
+      "duration_ms": 3325,
+      "log_dir": "work/shadowquic_quicproxy/logs",
+      "message": null,
+      "probes": [
+        {
+          "duration_ms": 110,
+          "http_status": 301,
+          "message": null,
+          "metrics": {
+            "size": 167,
+            "socks": 41,
+            "tls": 9,
+            "ttfb": 69
+          },
+          "output": "Testing proxy socks5://sq-client-317e830262:1080 -> cloudflare.com:443\n\n[HTTP/2]   OK 301 (110ms) socks:41ms tls:9ms ttfb:69ms size:167B\n",
+          "protocol": "http2",
+          "status": "pass"
+        },
+        {
+          "duration_ms": 98,
+          "http_status": 301,
+          "message": null,
+          "metrics": {
+            "size": 167,
+            "socks": 41,
+            "tls": 39,
+            "ttfb": 98
+          },
+          "output": "Testing proxy socks5://sq-client-317e830262:1080 -> cloudflare.com:443\n\n[HTTP/3]   OK 301 (98ms) socks:41ms tls:39ms ttfb:98ms size:167B\n",
+          "protocol": "http3",
+          "status": "pass"
+        }
+      ],
+      "server": "quicproxy",
+      "status": "pass"
+    },
+    {
+      "client": "shadowquic",
+      "duration_ms": 0,
+      "log_dir": null,
+      "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+      "probes": [
+        {
+          "duration_ms": null,
+          "http_status": null,
+          "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+          "metrics": {},
+          "output": "",
+          "protocol": "http2",
+          "status": "unsupported"
+        },
+        {
+          "duration_ms": null,
+          "http_status": null,
+          "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+          "metrics": {},
+          "output": "",
+          "protocol": "http3",
+          "status": "unsupported"
+        }
+      ],
+      "server": "mihomo",
+      "status": "unsupported"
+    },
+    {
+      "client": "quicproxy",
+      "duration_ms": 3194,
+      "log_dir": "work/quicproxy_shadowquic/logs",
+      "message": null,
+      "probes": [
+        {
+          "duration_ms": null,
+          "http_status": null,
+          "message": "TLS error: Connection reset by peer (os error 104)",
+          "metrics": {},
+          "output": "Testing proxy socks5://sq-client-5e154599b0:1080 -> cloudflare.com:443\n\n[HTTP/2]   FAILED: TLS error: Connection reset by peer (os error 104)\n",
+          "protocol": "http2",
+          "status": "fail"
+        },
+        {
+          "duration_ms": null,
+          "http_status": null,
+          "message": "IO error: failed to lookup address information: Temporary failure in name resolution",
+          "metrics": {},
+          "output": "Testing proxy socks5://sq-client-5e154599b0:1080 -> cloudflare.com:443\n\n[HTTP/3]   FAILED: IO error: failed to lookup address information: Temporary failure in name resolution\n",
+          "protocol": "http3",
+          "status": "fail"
+        }
+      ],
+      "server": "shadowquic",
+      "status": "fail"
+    },
+    {
+      "client": "quicproxy",
+      "duration_ms": 3266,
+      "log_dir": "work/quicproxy_quicproxy/logs",
+      "message": null,
+      "probes": [
+        {
+          "duration_ms": null,
+          "http_status": null,
+          "message": "TLS error: Connection reset by peer (os error 104)",
+          "metrics": {},
+          "output": "Testing proxy socks5://sq-client-c8b1c8da7c:1080 -> cloudflare.com:443\n\n[HTTP/2]   FAILED: TLS error: Connection reset by peer (os error 104)\n",
+          "protocol": "http2",
+          "status": "fail"
+        },
+        {
+          "duration_ms": null,
+          "http_status": null,
+          "message": "IO error: failed to lookup address information: Temporary failure in name resolution",
+          "metrics": {},
+          "output": "Testing proxy socks5://sq-client-c8b1c8da7c:1080 -> cloudflare.com:443\n\n[HTTP/3]   FAILED: IO error: failed to lookup address information: Temporary failure in name resolution\n",
+          "protocol": "http3",
+          "status": "fail"
+        }
+      ],
+      "server": "quicproxy",
+      "status": "fail"
+    },
+    {
+      "client": "quicproxy",
+      "duration_ms": 0,
+      "log_dir": null,
+      "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+      "probes": [
+        {
+          "duration_ms": null,
+          "http_status": null,
+          "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+          "metrics": {},
+          "output": "",
+          "protocol": "http2",
+          "status": "unsupported"
+        },
+        {
+          "duration_ms": null,
+          "http_status": null,
+          "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+          "metrics": {},
+          "output": "",
+          "protocol": "http3",
+          "status": "unsupported"
+        }
+      ],
+      "server": "mihomo",
+      "status": "unsupported"
+    },
+    {
+      "client": "mihomo",
+      "duration_ms": 0,
+      "log_dir": null,
+      "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+      "probes": [
+        {
+          "duration_ms": null,
+          "http_status": null,
+          "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+          "metrics": {},
+          "output": "",
+          "protocol": "http2",
+          "status": "unsupported"
+        },
+        {
+          "duration_ms": null,
+          "http_status": null,
+          "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+          "metrics": {},
+          "output": "",
+          "protocol": "http3",
+          "status": "unsupported"
+        }
+      ],
+      "server": "shadowquic",
+      "status": "unsupported"
+    },
+    {
+      "client": "mihomo",
+      "duration_ms": 0,
+      "log_dir": null,
+      "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+      "probes": [
+        {
+          "duration_ms": null,
+          "http_status": null,
+          "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+          "metrics": {},
+          "output": "",
+          "protocol": "http2",
+          "status": "unsupported"
+        },
+        {
+          "duration_ms": null,
+          "http_status": null,
+          "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+          "metrics": {},
+          "output": "",
+          "protocol": "http3",
+          "status": "unsupported"
+        }
+      ],
+      "server": "quicproxy",
+      "status": "unsupported"
+    },
+    {
+      "client": "mihomo",
+      "duration_ms": 0,
+      "log_dir": null,
+      "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+      "probes": [
+        {
+          "duration_ms": null,
+          "http_status": null,
+          "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+          "metrics": {},
+          "output": "",
+          "protocol": "http2",
+          "status": "unsupported"
+        },
+        {
+          "duration_ms": null,
+          "http_status": null,
+          "message": "The current upstream does not implement a ShadowQUIC proxy or listener. The endpoint remains in the matrix and will become runnable when upstream adds it.",
+          "metrics": {},
+          "output": "",
+          "protocol": "http3",
+          "status": "unsupported"
+        }
+      ],
+      "server": "mihomo",
+      "status": "unsupported"
+    }
+  ],
+  "run_id": "2026-07-19T05:14:47Z",
+  "runner_version": "0.1.0",
+  "schema_version": 1,
+  "started_at": "2026-07-19T05:14:47.621347Z",
+  "target": "https://cloudflare.com/"
+}

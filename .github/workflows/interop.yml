@@ -29,6 +29,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -61,6 +63,7 @@ jobs:
 
       - name: Commit result archive
         run: |
+          branch="${GITHUB_REF_NAME:-main}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f results/*.json
@@ -68,7 +71,15 @@ jobs:
             exit 0
           fi
           git commit -m "chore: record interoperability run [skip ci]"
-          git push
+          git fetch origin "$branch"
+          if ! git rebase "origin/$branch"; then
+            git rebase --abort || true
+            echo "Archive branch advanced incompatibly; skipping archive push."
+            exit 0
+          fi
+          if ! git push origin HEAD:"$branch"; then
+            echo "Archive branch advanced before push completed; skipping archive push."
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

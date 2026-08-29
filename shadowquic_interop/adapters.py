@@ -91,11 +91,11 @@ IMPLEMENTATIONS: dict[str, Implementation] = {
     "clash-rs": Implementation(
         key="clash-rs",
         name="clash-rs",
-        source="https://github.com/Watfaq/clash-rs",
-        image="ghcr.io/watfaq/clash-rs:latest",
+        source="https://github.com/Watfaq/clash-rs/releases/latest",
+        image="shadowquic-interop/clash-rs:latest",
         config_format="yaml",
         server=False,
-        note="ShadowQUIC is supported as an outbound only; clash-rs has no ShadowQUIC server adapter.",
+        note="Built locally from the latest GitHub release. ShadowQUIC is supported as an outbound only.",
     ),
 }
 

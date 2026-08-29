@@ -95,10 +95,15 @@ class PrepareTests(unittest.TestCase):
                 for call in flattened
             )
         )
-        self.assertIn(
-            "docker pull ghcr.io/watfaq/clash-rs:latest",
-            flattened,
+        self.assertTrue(
+            any(
+                "docker/clash-rs.Dockerfile" in call
+                and "shadowquic-interop/clash-rs:latest" in call
+                and "--no-cache" in call
+                for call in flattened
+            )
         )
+        self.assertNotIn("docker pull ghcr.io/watfaq/clash-rs:latest", flattened)
 
 
 if __name__ == "__main__":

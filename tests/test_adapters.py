@@ -65,6 +65,8 @@ class AdapterTests(unittest.TestCase):
         implementation = IMPLEMENTATIONS["clash-rs"]
         self.assertTrue(implementation.client)
         self.assertFalse(implementation.server)
+        self.assertEqual(implementation.image, "shadowquic-interop/clash-rs:latest")
+        self.assertTrue(implementation.source.endswith("/releases/latest"))
         self.assertEqual(implementation.command(), ["-c", "/config/config.yaml"])
         with self.assertRaisesRegex(ValueError, "no ShadowQUIC server adapter"):
             implementation.render_server()

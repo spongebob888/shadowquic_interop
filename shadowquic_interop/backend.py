@@ -87,8 +87,18 @@ class DockerBackend:
             timeout=600,
         )
         self.commands.run(
-            ["docker", "pull", "ghcr.io/watfaq/clash-rs:latest"],
-            timeout=600,
+            [
+                "docker",
+                "build",
+                "--pull",
+                "--no-cache",
+                "-f",
+                "docker/clash-rs.Dockerfile",
+                "-t",
+                "shadowquic-interop/clash-rs:latest",
+                ".",
+            ],
+            timeout=1800,
         )
         self.commands.run(
             [

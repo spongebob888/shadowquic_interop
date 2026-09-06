@@ -63,6 +63,10 @@ class ReportTests(unittest.TestCase):
             self.assertIn("2026-07-19T00:00:00Z", html)
             self.assertNotIn("__SHADOWQUIC_RUN_DATA__", html)
             self.assertTrue((output / "assets" / "app.js").is_file())
+            self.assertIn(
+                "HTTP/3 over stream",
+                (output / "assets" / "app.js").read_text(),
+            )
             self.assertTrue((output / "assets" / "style.css").is_file())
             self.assertTrue((output / ".nojekyll").is_file())
 
@@ -76,4 +80,3 @@ class ReportTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

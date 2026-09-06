@@ -53,15 +53,15 @@ class Implementation:
             return _mihomo_server()
         raise ValueError(f"{self.name} has no ShadowQUIC server adapter")
 
-    def render_client(self, server_host: str) -> str:
+    def render_client(self, server_host: str, *, over_stream: bool = False) -> str:
         if self.key == "shadowquic":
-            return _shadowquic_client(server_host)
+            return _shadowquic_client(server_host, over_stream)
         if self.key == "quicproxy":
-            return _quicproxy_client(server_host)
+            return _quicproxy_client(server_host, over_stream)
         if self.key == "mihomo":
-            return _mihomo_client(server_host)
+            return _mihomo_client(server_host, over_stream)
         if self.key == "clash-rs":
-            return _clash_rs_client(server_host)
+            return _clash_rs_client(server_host, over_stream)
         raise ValueError(f"{self.name} has no ShadowQUIC client adapter")
 
 
@@ -129,7 +129,7 @@ log-level: info
 """
 
 
-def _shadowquic_client(server_host: str) -> str:
+def _shadowquic_client(server_host: str, over_stream: bool) -> str:
     return f"""inbound:
   type: socks
   bind-addr: \"0.0.0.0:{SOCKS_PORT}\"
@@ -144,7 +144,7 @@ outbound:
   congestion-control: cubic
   zero-rtt: true
   gso: false
-  over-stream: false
+  over-stream: {_yaml_bool(over_stream)}
 log-level: info
 """
 
@@ -181,7 +181,7 @@ def _quicproxy_server() -> str:
     )
 
 
-def _quicproxy_client(server_host: str) -> str:
+def _quicproxy_client(server_host: str, over_stream: bool) -> str:
     return _json_config(
         {
             "inbounds": {
@@ -200,7 +200,7 @@ def _quicproxy_client(server_host: str) -> str:
                         "port": SERVER_PORT,
                         "dns": "docker_dns",
                         "idle_timeout": 60,
-                        "udp_mod": "datagram",
+                        "udp_mod": "stream" if over_stream else "datagram",
                         "mtu_discoveriy": False,
                         "gso": False,
                         "tls": {
@@ -271,7 +271,7 @@ rules:
 """
 
 
-def _mihomo_client(server_host: str) -> str:
+def _mihomo_client(server_host: str, over_stream: bool) -> str:
     return f"""mode: rule
 log-level: info
 ipv6: false
@@ -288,7 +288,7 @@ proxies:
     sni: \"{SNI}\"
     alpn: [\"h3\"]
     quic-versions: [v1]
-    udp-over-stream: false
+    udp-over-stream: {_yaml_bool(over_stream)}
     zero-rtt: true
     congestion-controller: cubic
     disable-mtu-discovery: false
@@ -304,7 +304,7 @@ rules:
 """
 
 
-def _clash_rs_client(server_host: str) -> str:
+def _clash_rs_client(server_host: str, over_stream: bool) -> str:
     return f"""mode: rule
 log-level: info
 ipv6: false
@@ -328,7 +328,7 @@ proxies:
     alpn: ["h3"]
     congestion-control: cubic
     zero-rtt: true
-    over-stream: false
+    over-stream: {_yaml_bool(over_stream)}
     initial-mtu: 1300
     min-mtu: 1290
     keep-alive-interval: 10000
@@ -360,3 +360,7 @@ def _quicproxy_docker_dns() -> dict[str, object]:
 
 def _json_config(value: dict[str, object]) -> str:
     return json.dumps(value, indent=2, sort_keys=True) + "\n"
+
+
+def _yaml_bool(value: bool) -> str:
+    return str(value).lower()

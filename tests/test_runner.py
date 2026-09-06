@@ -76,7 +76,21 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(loaded.run_id, result.run_id)
             self.assertEqual(loaded.results[0].probes[0].protocol, Protocol.HTTP2)
             latest = json.loads((Path(directory) / "latest.json").read_text())
-            self.assertEqual(latest["schema_version"], 1)
+            self.assertEqual(latest["schema_version"], 2)
+
+    def test_unsupported_http3_cell_contains_both_subtests(self) -> None:
+        backend = FakeBackend()
+        result = InteropRunner(backend).run(
+            clients=[IMPLEMENTATIONS["shadowquic"]],
+            servers=[IMPLEMENTATIONS["clash-rs"]],
+            protocols=[Protocol.HTTP3],
+            target="https://example.com/",
+            work_dir=Path("work"),
+        )
+        self.assertEqual(
+            [probe.over_stream for probe in result.results[0].probes],
+            [False, True],
+        )
 
 
 if __name__ == "__main__":

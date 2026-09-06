@@ -9,7 +9,14 @@ from pathlib import Path
 from typing import Sequence
 
 from .adapters import SOCKS_PORT, Implementation
-from .models import CellResult, ProbeResult, Protocol, Status, aggregate_status
+from .models import (
+    CellResult,
+    ProbeResult,
+    Protocol,
+    Status,
+    aggregate_status,
+    probe_variants,
+)
 
 
 PROXYPEN_IMAGE = "shadowquic-interop/proxypen:latest"
@@ -153,44 +160,122 @@ class DockerBackend:
         suffix = uuid.uuid4().hex[:10]
         network = f"sq-interop-{suffix}"
         server_name = f"sq-server-{suffix}"
-        client_name = f"sq-client-{suffix}"
         cell_dir = work_dir / f"{client.key}_{server.key}"
         log_dir = cell_dir / "logs"
         server_config = cell_dir / "server" / server.config_name
-        client_config = cell_dir / "client" / client.config_name
         server_config.parent.mkdir(parents=True, exist_ok=True)
-        client_config.parent.mkdir(parents=True, exist_ok=True)
         log_dir.mkdir(parents=True, exist_ok=True)
         server_config.write_text(server.render_server(), encoding="utf-8")
-        client_config.write_text(client.render_client(server_name), encoding="utf-8")
+
+        mode_protocols: dict[bool, list[Protocol]] = {False: []}
+        if Protocol.HTTP2 in protocols:
+            mode_protocols[False].append(Protocol.HTTP2)
+        if Protocol.HTTP3 in protocols:
+            mode_protocols[False].append(Protocol.HTTP3)
+            mode_protocols[True] = [Protocol.HTTP3]
+
+        client_names: dict[bool, str] = {}
+        client_configs: dict[bool, Path] = {}
+        for over_stream in mode_protocols:
+            mode_name = "over-stream" if over_stream else "udp"
+            client_names[over_stream] = f"sq-client-{mode_name}-{suffix}"
+            config = cell_dir / f"client-{mode_name}" / client.config_name
+            config.parent.mkdir(parents=True, exist_ok=True)
+            config.write_text(
+                client.render_client(server_name, over_stream=over_stream),
+                encoding="utf-8",
+            )
+            client_configs[over_stream] = config
 
         probes: list[ProbeResult] = []
-        message: str | None = None
+        errors: list[str] = []
         created_network = False
         try:
             self.commands.run(["docker", "network", "create", network], timeout=30)
             created_network = True
             self._start_container(server_name, network, server, server_config)
             self._assert_running(server_name, "server")
-            self._start_container(client_name, network, client, client_config)
-            self._assert_running(client_name, "client")
-            time.sleep(self.readiness_delay)
+            mode_errors: dict[bool, str] = {}
+            started_modes: list[bool] = []
+            for over_stream in mode_protocols:
+                client_name = client_names[over_stream]
+                try:
+                    self._start_container(
+                        client_name,
+                        network,
+                        client,
+                        client_configs[over_stream],
+                    )
+                    self._assert_running(client_name, "client")
+                    started_modes.append(over_stream)
+                except BackendError as exc:
+                    mode_errors[over_stream] = str(exc)
+                    errors.append(str(exc))
+            if started_modes:
+                time.sleep(self.readiness_delay)
             self._assert_running(server_name, "server")
-            self._assert_running(client_name, "client")
-            for protocol in protocols:
-                probes.append(self._probe(network, client_name, target, protocol))
+            for over_stream, mode_items in mode_protocols.items():
+                client_name = client_names[over_stream]
+                mode_error = mode_errors.get(over_stream)
+                if mode_error is None:
+                    try:
+                        self._assert_running(client_name, "client")
+                    except BackendError as exc:
+                        mode_error = str(exc)
+                        errors.append(mode_error)
+                for protocol in mode_items:
+                    probe_over_stream = (
+                        over_stream if protocol == Protocol.HTTP3 else None
+                    )
+                    if mode_error is not None:
+                        probes.append(
+                            ProbeResult(
+                                protocol=protocol,
+                                status=Status.ERROR,
+                                over_stream=probe_over_stream,
+                                message=mode_error,
+                            )
+                        )
+                        continue
+                    try:
+                        probes.append(
+                            self._probe(
+                                network,
+                                client_name,
+                                target,
+                                protocol,
+                                over_stream=probe_over_stream,
+                            )
+                        )
+                    except BackendError as exc:
+                        errors.append(str(exc))
+                        probes.append(
+                            ProbeResult(
+                                protocol=protocol,
+                                status=Status.ERROR,
+                                over_stream=probe_over_stream,
+                                message=str(exc),
+                            )
+                        )
         except BackendError as exc:
-            message = str(exc)
-            completed = {probe.protocol for probe in probes}
+            errors.append(str(exc))
+            completed = {(probe.protocol, probe.over_stream) for probe in probes}
             probes.extend(
-                ProbeResult(protocol=protocol, status=Status.ERROR, message=message)
-                for protocol in protocols
-                if protocol not in completed
+                ProbeResult(
+                    protocol=protocol,
+                    status=Status.ERROR,
+                    over_stream=over_stream,
+                    message=str(exc),
+                )
+                for protocol, over_stream in probe_variants(protocols)
+                if (protocol, over_stream) not in completed
             )
         finally:
             self._capture_logs(server_name, log_dir / "server.log")
-            self._capture_logs(client_name, log_dir / "client.log")
-            self._cleanup_container(client_name)
+            for over_stream, client_name in client_names.items():
+                mode_name = "over-stream" if over_stream else "udp"
+                self._capture_logs(client_name, log_dir / f"client-{mode_name}.log")
+                self._cleanup_container(client_name)
             self._cleanup_container(server_name)
             if created_network:
                 self.commands.run(
@@ -203,7 +288,7 @@ class DockerBackend:
             status=aggregate_status(probes),
             probes=probes,
             duration_ms=int((time.monotonic() - started) * 1000),
-            message=message,
+            message="; ".join(dict.fromkeys(errors)) or None,
             log_dir=str(log_dir),
         )
 
@@ -244,7 +329,13 @@ class DockerBackend:
             raise BackendError(f"{role} {name} stopped during startup: {logs[-1200:]}")
 
     def _probe(
-        self, network: str, client_name: str, target: str, protocol: Protocol
+        self,
+        network: str,
+        client_name: str,
+        target: str,
+        protocol: Protocol,
+        *,
+        over_stream: bool | None,
     ) -> ProbeResult:
         result = self.commands.run(
             [
@@ -267,7 +358,12 @@ class DockerBackend:
             timeout=self.timeout + 15,
             check=False,
         )
-        return parse_proxypen_output(protocol, result.output, result.returncode)
+        return parse_proxypen_output(
+            protocol,
+            result.output,
+            result.returncode,
+            over_stream=over_stream,
+        )
 
     def _capture_logs(self, name: str, destination: Path) -> None:
         result = self.commands.run(
@@ -293,7 +389,11 @@ _METRIC = re.compile(r"(?P<name>socks|tcp|tls|ttfb|size):(?P<value>\d+)(?:ms|B)"
 
 
 def parse_proxypen_output(
-    protocol: Protocol, output: str, returncode: int
+    protocol: Protocol,
+    output: str,
+    returncode: int,
+    *,
+    over_stream: bool | None = None,
 ) -> ProbeResult:
     success = _SUCCESS.search(output)
     if success:
@@ -304,6 +404,7 @@ def parse_proxypen_output(
         return ProbeResult(
             protocol=protocol,
             status=Status.PASS,
+            over_stream=over_stream,
             http_status=int(success.group("status")),
             duration_ms=int(success.group("duration")),
             metrics=metrics,
@@ -315,6 +416,7 @@ def parse_proxypen_output(
         return ProbeResult(
             protocol=protocol,
             status=Status.FAIL,
+            over_stream=over_stream,
             message=failure.group("message").strip(),
             output=output,
         )
@@ -323,6 +425,7 @@ def parse_proxypen_output(
     return ProbeResult(
         protocol=protocol,
         status=Status.ERROR,
+        over_stream=over_stream,
         message=f"unrecognized ProxyPen output: {detail}",
         output=output,
     )

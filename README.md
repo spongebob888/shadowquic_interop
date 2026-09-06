@@ -32,7 +32,9 @@ Each runnable client/server pair gets a private Docker bridge network:
 
 1. The server starts with a generated ShadowQUIC/JLS configuration.
 2. The client starts with a generated configuration and a SOCKS5 listener.
-3. ProxyPen requests the public target over HTTP/2 and HTTP/3 through SOCKS5.
+3. ProxyPen requests the public target over HTTP/2, HTTP/3 over UDP, and
+   HTTP/3 over stream through SOCKS5. The two HTTP/3 subtests use separate
+   client configurations.
 4. The runner records protocol timings, endpoint output, and a cell status.
 5. Containers and the network are removed even when setup or probing fails.
 
@@ -85,12 +87,13 @@ and `python3 -m shadowquic_interop run --help` for every option.
 ## Result data
 
 Every run creates `results/<UTC timestamp>.json` and refreshes
-`results/latest.json`. Schema version 1 includes:
+`results/latest.json`. Schema version 2 includes:
 
 - run timestamps, target, protocols, and runner version
 - endpoint source, image, and client/server capabilities
 - one result per matrix cell
-- one HTTP result per requested protocol, including ProxyPen metrics
+- one HTTP result per requested protocol and two results for HTTP/3 (UDP and
+  over-stream), including ProxyPen metrics
 - an optional error message and endpoint log directory
 
 The report generator reads every valid JSON file in `results/`, de-duplicates

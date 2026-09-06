@@ -7,7 +7,7 @@ from typing import Protocol as TypingProtocol
 
 from . import __version__
 from .adapters import Implementation
-from .models import CellResult, ProbeResult, Protocol, RunResult, Status
+from .models import CellResult, ProbeResult, Protocol, RunResult, Status, probe_variants
 
 
 class CellBackend(TypingProtocol):
@@ -54,9 +54,10 @@ class InteropRunner:
                                 ProbeResult(
                                     protocol=protocol,
                                     status=Status.UNSUPPORTED,
+                                    over_stream=over_stream,
                                     message=reason,
                                 )
-                                for protocol in protocols
+                                for protocol, over_stream in probe_variants(protocols)
                             ],
                             duration_ms=0,
                             message=reason,
@@ -107,4 +108,3 @@ def write_result(result: RunResult, output_dir: Path) -> Path:
 
 def read_result(path: Path) -> RunResult:
     return RunResult.from_dict(json.loads(path.read_text(encoding="utf-8")))
-

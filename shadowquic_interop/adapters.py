@@ -108,7 +108,7 @@ IMPLEMENTATIONS: dict[str, Implementation] = {
     "clash-rs": Implementation(
         key="clash-rs",
         name="clash-rs",
-        source="https://github.com/Watfaq/clash-rs/releases/latest",
+        source="https://github.com/ibigbug/clash-rs/releases/latest",
         image="shadowquic-interop/clash-rs:latest",
         config_format="yaml",
         server=False,

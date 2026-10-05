@@ -11,7 +11,7 @@ The clients include:
 - shadowquic
 - [quicproxy](https://github.com/RealBikiniBottom/QuicProxy/)
 - mihomo
-- [clash-rs](https://github.com/Watfaq/clash-rs)
+- [clash-rs](https://github.com/ibigbug/clash-rs)
 
 The server include:
 - shadowquic

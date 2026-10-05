@@ -10,7 +10,7 @@ RUN build_arch="${TARGETARCH:-$(apk --print-arch)}" \
     esac \
     && curl --fail --location --retry 3 \
       --output /usr/local/bin/clash-rs \
-      "https://github.com/Watfaq/clash-rs/releases/latest/download/clash-rs-${release_arch}-unknown-linux-musl" \
+      "https://github.com/ibigbug/clash-rs/releases/latest/download/clash-rs-${release_arch}-unknown-linux-musl" \
     && chmod 0755 /usr/local/bin/clash-rs
 
 FROM alpine:latest

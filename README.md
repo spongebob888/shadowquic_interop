@@ -30,13 +30,30 @@ the active project at
 
 Each runnable client/server pair gets a private Docker bridge network:
 
-1. The server starts with a generated ShadowQUIC/JLS configuration.
+1. The server starts with a generated ShadowQUIC/JLS configuration. Server
+   implementations carry UDP sessions in whatever mode the client requested,
+   so no server-side UDP configuration is needed.
 2. The client starts with a generated configuration and a SOCKS5 listener.
+   HTTP/2 uses the default (datagram) client configuration.
 3. ProxyPen requests the public target over HTTP/2, HTTP/3 over UDP, and
-   HTTP/3 over stream through SOCKS5. The two HTTP/3 subtests use separate
-   client configurations.
-4. The runner records protocol timings, endpoint output, and a cell status.
-5. Containers and the network are removed even when setup or probing fails.
+   HTTP/3 over stream through SOCKS5 using separate client configurations.
+4. UDP probes exercise the SOCKS5 UDP ASSOCIATE path in two transport modes —
+   `udp-over-stream` (UDP payloads on reliable QUIC streams) and
+   `udp-over-datagram` (RFC 9221 QUIC datagrams). Because each client chooses
+   its UDP transport mode at startup, the runner starts one client container
+   per requested mode. An in-network UDP echo container answers the probe, so
+   the whole path (probe → client SOCKS5 UDP relay → QUIC tunnel → server
+   direct outbound → echo target and back) stays inside the cell network.
+5. The UDP probe sends 1200-byte datagrams for a fixed window and reports how
+   many bytes and packets came back, letting the report show throughput in
+   MB/s plus echo coverage. It also paces single-datagram echo round trips to
+   measure latency (min/avg/p95/max).
+6. Every probe runs a pressure phase afterwards: `--load-connections` (default
+   4) concurrent sessions hit the same proxy while a sampler thread records
+   the peak memory of the client and server containers, and the latency
+   figures collected under that load are merged into the probe metrics.
+7. The runner records protocol timings, endpoint output, and a cell status.
+8. Containers and the network are removed even when setup or probing fails.
 
 `pass`, `fail`, `error`, and `unsupported` are distinct. A protocol failure
 means ProxyPen reached the test path and rejected the result. An error means
@@ -72,10 +89,17 @@ python3 -m shadowquic_interop run \
   --servers shadowquic \
   --no-build
 
-# Only HTTP/3 with a different public target
+# Only HTTP/2 and HTTP/3 with a different public target
 python3 -m shadowquic_interop run \
-  --protocols http3 \
+  --protocols http2,http3 \
   --target https://cloudflare.com/
+
+# UDP only: both transport modes through the matrix
+python3 -m shadowquic_interop run \
+  --protocols udp-over-stream,udp-over-datagram
+
+# No pressure phase (single functional probe per cell)
+python3 -m shadowquic_interop run --load-connections 0
 
 # Return nonzero when a runnable matrix cell fails
 python3 -m shadowquic_interop run --fail-on-test-failure
@@ -94,17 +118,27 @@ Every run creates `results/<UTC timestamp>.json` and refreshes
 - one result per matrix cell
 - one HTTP result per requested protocol and two results for HTTP/3 (UDP and
   over-stream), including ProxyPen metrics
+- one UDP result per requested mode (`udp-over-stream`,
+  `udp-over-datagram`) with byte and packet counts plus the throughput
+  window and per-datagram latency; the report derives upload/download rates
+  in MB/s
+- pressure metrics per probe when `--load-connections` is set: concurrent
+  session count/success, aggregated min/avg/p95/max latency in ms, and peak
+  client/server container memory in KiB
 - an optional error message and endpoint log directory
 
 The report generator reads every valid JSON file in `results/`, de-duplicates
 run IDs, and embeds the archive into `site/index.html`. Published URLs accept
-`?run=<run-id>&protocol=http3`.
+`?run=<run-id>&protocol=http3` and the same for `udp-over-stream` or
+`udp-over-datagram`.
 
 ## GitHub automation
 
 [`ci.yml`](.github/workflows/ci.yml) validates every push and pull request.
-[`interop.yml`](.github/workflows/interop.yml) runs daily at 16:30 UTC and can
-also be started manually. It builds current upstream images, executes the
+[`interop.yml`](.github/workflows/interop.yml) runs the full matrix after every
+push to the default branch that touches code, daily at 16:30 UTC, and on
+manual dispatch. Its own result commits carry `[skip ci]` so they never
+re-trigger it. The workflow builds current upstream images, executes the
 matrix, uploads diagnostic logs, commits the new JSON result to the default
 branch, and deploys the complete archive through GitHub Pages.
 
@@ -116,8 +150,9 @@ the scheduled result commit.
 ## Endpoint maintenance
 
 Endpoint metadata and config renderers live in
-`shadowquic_interop/adapters.py`. Clash-rs, Mihomo Meta, QuicProxy, and ProxyPen
-build definitions live under `docker/`; only shadowquic uses a published image
-directly. Pass Docker build arguments such as
+`shadowquic_interop/adapters.py`. Clash-rs, Mihomo Meta, QuicProxy, ProxyPen,
+and the UDP echo/probe tool (`docker/udp.Dockerfile`) build definitions live
+under `docker/`; only shadowquic uses a published image directly. Pass Docker
+build arguments such as
 `--build-arg MIHOMO_REF=<tag-or-branch>`, or
 `--build-arg QUICPROXY_REF=<tag-or-branch>` when selecting an endpoint version.

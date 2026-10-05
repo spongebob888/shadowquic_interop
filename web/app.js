@@ -14,6 +14,20 @@
     unsupported: { symbol: "\u2013", label: "Unsupported" },
   };
 
+  const protocolNames = {
+    http2: "HTTP/2",
+    http3: "HTTP/3",
+    "udp-over-stream": "UDP over stream",
+    "udp-over-datagram": "UDP over datagram",
+  };
+  const protocolBadges = {
+    http2: "H2",
+    http3: "H3",
+    "udp-over-stream": "UDP/S",
+    "udp-over-datagram": "UDP/D",
+  };
+  const protocolValues = Object.keys(protocolNames);
+
   if (!runs.length) {
     document.getElementById("empty-state").hidden = false;
     runSelect.disabled = true;
@@ -33,7 +47,7 @@
     ? requestedRun
     : runs[0].run_id;
   const requestedProtocol = params.get("protocol");
-  protocolSelect.value = ["all", "http2", "http3"].includes(requestedProtocol)
+  protocolSelect.value = ["all", ...protocolValues].includes(requestedProtocol)
     ? requestedProtocol
     : "all";
 
@@ -64,6 +78,7 @@
     const servers = unique(run.results.map((item) => item.server));
     const cells = new Map(run.results.map((item) => [`${item.client}:${item.server}`, item]));
     renderMatrix(clients, servers, cells, implementations, protocol);
+    renderUdpTables(clients, servers, cells, implementations);
     renderSummary(run.results, protocol);
     renderImplementations(run.implementations);
   }
@@ -142,6 +157,129 @@
       badges.append(badge);
     }
     button.append(symbol, label, badges);
+    const memory = cellMemInfo(visibleProbes);
+    if (memory) {
+      const mem = document.createElement("span");
+      mem.className = "cell-mem";
+      mem.textContent = `C ${formatMemKb(memory.client)} / S ${formatMemKb(memory.server)} MB`;
+      mem.title = "Peak container memory during the load phase (client / server)";
+      button.append(mem);
+    }
+    button.addEventListener("click", () => showDetails(cell, implementations, protocol));
+    return button;
+  }
+
+  function renderUdpTables(clients, servers, cells, implementations) {
+    for (const mode of ["stream", "datagram"]) {
+      const protocol = mode === "stream" ? "udp-over-stream" : "udp-over-datagram";
+      const head = document.getElementById(`udp-${mode}-head`);
+      const body = document.getElementById(`udp-${mode}-body`);
+      head.replaceChildren();
+      body.replaceChildren();
+
+      const corner = document.createElement("th");
+      corner.className = "corner-label";
+      corner.scope = "col";
+      corner.textContent = "Client implementation";
+      head.append(corner);
+      for (const server of servers) {
+        const th = document.createElement("th");
+        th.scope = "col";
+        th.textContent = implementations.get(server)?.name || server;
+        head.append(th);
+      }
+
+      for (const client of clients) {
+        const row = document.createElement("tr");
+        const label = document.createElement("th");
+        label.className = "row-label";
+        label.scope = "row";
+        label.textContent = implementations.get(client)?.name || client;
+        const axis = document.createElement("span");
+        axis.textContent = "CLIENT";
+        label.append(axis);
+        row.append(label);
+        for (const server of servers) {
+          const cell = cells.get(`${client}:${server}`);
+          const probe = cell?.probes.find((item) => item.protocol === protocol);
+          const td = document.createElement("td");
+          if (!probe) {
+            td.className = "udp-na";
+            td.title = "This run did not include this UDP probe";
+            td.append("—");
+          } else {
+            td.append(createUdpCellButton(cell, probe, implementations, protocol));
+          }
+          row.append(td);
+        }
+        body.append(row);
+      }
+    }
+  }
+
+  function createUdpCellButton(cell, probe, implementations, protocol) {
+    const view = statusView[probe.status] || statusView.error;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `cell-button rate-cell ${probe.status}`;
+    button.title = `${view.label}: open details`;
+
+    if (probe.status === "pass") {
+      const metrics = probe.metrics || {};
+      if (metrics.sent_bytes != null && metrics.window_ms) {
+        const up = rateMBs(metrics.sent_bytes, metrics.window_ms);
+        const down = probe.duration_ms
+          ? rateMBs(metrics.recv_bytes, probe.duration_ms)
+          : "0.00";
+        const upLine = document.createElement("span");
+        upLine.className = "rate-line up";
+        upLine.textContent = `\u2191 ${up}`;
+        const downLine = document.createElement("span");
+        downLine.className = "rate-line down";
+        downLine.textContent = `\u2193 ${down}`;
+        const unit = document.createElement("span");
+        unit.className = "rate-unit";
+        unit.textContent = "MB/s";
+        button.append(upLine, downLine, unit);
+        const p95 = metrics.load_latency_p95_ms ?? metrics.latency_p95_ms;
+        if (p95 != null) {
+          const latency = document.createElement("span");
+          latency.className = "rate-line latency";
+          latency.textContent = `p95 ${p95} ms`;
+          button.append(latency);
+        }
+        const memory = cellMemInfo([probe]);
+        if (memory) {
+          const mem = document.createElement("span");
+          mem.className = "rate-line memory";
+          mem.textContent = `C ${formatMemKb(memory.client)} / S ${formatMemKb(memory.server)} MB`;
+          mem.title = "Peak container memory during the load phase (client / server)";
+          button.append(mem);
+        }
+        button.setAttribute(
+          "aria-label",
+          `${implementations.get(cell.client)?.name || cell.client} client to ${
+            implementations.get(cell.server)?.name || cell.server
+          } server, ${protocolNames[protocol]}: pass, upload ${up} MB/s, download ${down} MB/s`,
+        );
+      } else {
+        const symbol = document.createElement("span");
+        symbol.className = "symbol";
+        symbol.setAttribute("aria-hidden", "true");
+        symbol.textContent = view.symbol;
+        button.append(symbol);
+      }
+    } else {
+      const symbol = document.createElement("span");
+      symbol.className = "symbol";
+      symbol.setAttribute("aria-hidden", "true");
+      symbol.textContent = view.symbol;
+      const label = document.createElement("span");
+      label.className = "status-label";
+      label.textContent = view.label;
+      button.append(symbol, label);
+    }
+
     button.addEventListener("click", () => showDetails(cell, implementations, protocol));
     return button;
   }
@@ -208,15 +346,42 @@
     title.append(name, status);
     section.append(title);
 
+    const metrics = probe.metrics || {};
     const values = [];
     if (probe.http_status != null) values.push(["HTTP status", String(probe.http_status)]);
     if (probe.duration_ms != null) values.push(["Total", `${probe.duration_ms} ms`]);
-    for (const [key, value] of Object.entries(probe.metrics || {})) {
-      values.push([key, key === "size" ? `${value} B` : `${value} ms`]);
+    if (probe.protocol === "udp-over-stream" || probe.protocol === "udp-over-datagram") {
+      if (metrics.sent_bytes != null && metrics.window_ms != null) {
+        values.push(["Upload", `${rateMBs(metrics.sent_bytes, metrics.window_ms)} MB/s`]);
+      }
+      if (metrics.recv_bytes != null && probe.duration_ms != null) {
+        values.push(["Download", `${rateMBs(metrics.recv_bytes, probe.duration_ms)} MB/s`]);
+      }
+      if (metrics.recv_packets != null && metrics.sent_packets != null) {
+        values.push([
+          "Echoed datagrams",
+          `${metrics.recv_packets} / ${metrics.sent_packets}`,
+        ]);
+      }
+    }
+    if (metrics.load_connections != null) {
+      values.push([
+        "Load sessions",
+        `${metrics.load_ok ?? 0} / ${metrics.load_connections}`,
+      ]);
+    }
+    const memInfo = cellMemInfo([probe]);
+    if (memInfo) {
+      values.push(["Peak memory client", `${formatMemKb(memInfo.client)} MB`]);
+      values.push(["Peak memory server", `${formatMemKb(memInfo.server)} MB`]);
+    }
+    for (const [key, value] of Object.entries(metrics)) {
+      if (key.startsWith("load_mem_")) continue; // shown as Peak memory above
+      values.push([metricLabel(key), formatMetric(key, value)]);
     }
     if (values.length) {
-      const metrics = document.createElement("dl");
-      metrics.className = "metrics";
+      const list = document.createElement("dl");
+      list.className = "metrics";
       for (const [key, value] of values) {
         const wrapper = document.createElement("div");
         const dt = document.createElement("dt");
@@ -224,9 +389,9 @@
         dt.textContent = key;
         dd.textContent = value;
         wrapper.append(dt, dd);
-        metrics.append(wrapper);
+        list.append(wrapper);
       }
-      section.append(metrics);
+      section.append(list);
     }
     if (probe.message) {
       const message = document.createElement("p");
@@ -235,6 +400,40 @@
       section.append(message);
     }
     return section;
+  }
+
+  function rateMBs(bytes, milliseconds) {
+    const seconds = milliseconds / 1000;
+    if (!Number.isFinite(bytes) || !seconds) return "0.00";
+    return (bytes / 1000000 / seconds).toFixed(2);
+  }
+
+  function formatMemKb(kib) {
+    return (kib / 1024).toFixed(1);
+  }
+
+  function cellMemInfo(probes) {
+    for (const probe of probes) {
+      const metrics = probe.metrics || {};
+      if (metrics.load_mem_client_max_kb != null) {
+        return {
+          client: metrics.load_mem_client_max_kb,
+          server: metrics.load_mem_server_max_kb || 0,
+        };
+      }
+    }
+    return null;
+  }
+
+  function metricLabel(key) {
+    return key.replace(/_(ms|kb|bytes|packets|samples|connections)$/, "").replace(/_/g, " ");
+  }
+
+  function formatMetric(key, value) {
+    if (key === "size" || key.endsWith("_bytes")) return `${value} B`;
+    if (key.endsWith("_kb")) return `${value} KB`;
+    if (key.endsWith("_ms")) return `${value} ms`;
+    return String(value);
   }
 
   function statusFor(cell, protocol) {
@@ -250,14 +449,14 @@
   }
 
   function probeLabel(probe) {
-    if (probe.protocol === "http2") return "H2";
+    if (probe.protocol !== "http3") return protocolBadges[probe.protocol] || probe.protocol;
     if (probe.over_stream === true) return "H3 stream";
     if (probe.over_stream === false) return "H3 UDP";
     return "H3";
   }
 
   function probeName(probe) {
-    if (probe.protocol === "http2") return "HTTP/2";
+    if (probe.protocol !== "http3") return protocolNames[probe.protocol] || probe.protocol;
     if (probe.over_stream === true) return "HTTP/3 over stream";
     if (probe.over_stream === false) return "HTTP/3 over UDP";
     return "HTTP/3";

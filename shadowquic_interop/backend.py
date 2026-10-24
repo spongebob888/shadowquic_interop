@@ -98,8 +98,18 @@ class DockerBackend:
         if not build:
             return
         self.commands.run(
-            ["docker", "pull", "ghcr.io/spongebob888/shadowquic:latest"],
-            timeout=600,
+            [
+                "docker",
+                "build",
+                "--pull",
+                "--no-cache",
+                "-f",
+                "docker/shadowquic.Dockerfile",
+                "-t",
+                "shadowquic-interop/shadowquic:latest",
+                ".",
+            ],
+            timeout=1800,
         )
         self.commands.run(
             [

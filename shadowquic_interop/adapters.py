@@ -87,8 +87,9 @@ IMPLEMENTATIONS: dict[str, Implementation] = {
         key="shadowquic",
         name="shadowquic",
         source="https://github.com/spongebob888/shadowquic",
-        image="ghcr.io/spongebob888/shadowquic:latest",
+        image="shadowquic-interop/shadowquic:latest",
         config_format="yaml",
+        note="Built locally from the latest upstream main branch.",
     ),
     "quicproxy": Implementation(
         key="quicproxy",

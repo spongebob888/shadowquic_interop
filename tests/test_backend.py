@@ -420,6 +420,17 @@ class PrepareTests(unittest.TestCase):
         commands = RecordingCommands()
         DockerBackend(command_runner=commands).prepare()
         flattened = [" ".join(call) for call in commands.calls]
+        self.assertIn(
+            [
+                "docker", "build", "--pull", "--no-cache",
+                "-f", "docker/shadowquic.Dockerfile",
+                "-t", IMPLEMENTATIONS["shadowquic"].image, ".",
+            ],
+            commands.calls,
+        )
+        self.assertNotIn(
+            "docker pull ghcr.io/spongebob888/shadowquic:latest", flattened
+        )
         self.assertTrue(
             any(
                 "docker/mihomo-meta.Dockerfile" in call

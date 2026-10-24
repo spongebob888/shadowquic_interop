@@ -8,10 +8,14 @@ The runnable matrix currently contains:
 
 | Implementation | Client | Server | Image source |
 | --- | :---: | :---: | --- |
-| shadowquic | yes | yes | `ghcr.io/spongebob888/shadowquic:latest` |
+| shadowquic | yes | yes | Built from upstream `main` |
 | QuicProxy | yes | yes | Built from upstream `master` |
 | mihomo Meta | yes | yes | Built from upstream `Meta` |
 | clash-rs | yes | no | Built from the latest GitHub release |
+
+ShadowQUIC is built locally from the latest upstream `main` branch as
+`shadowquic-interop/shadowquic:latest`. Normal runs rebuild it without Docker's
+build cache to fetch current source. Use `--no-build` to reuse local images.
 
 Mihomo is built explicitly from its
 [`Meta` branch](https://github.com/MetaCubeX/mihomo/tree/Meta). That branch
@@ -150,9 +154,10 @@ the scheduled result commit.
 ## Endpoint maintenance
 
 Endpoint metadata and config renderers live in
-`shadowquic_interop/adapters.py`. Clash-rs, Mihomo Meta, QuicProxy, ProxyPen,
+`shadowquic_interop/adapters.py`. ShadowQUIC, Clash-rs, Mihomo Meta, QuicProxy, ProxyPen,
 and the UDP echo/probe tool (`docker/udp.Dockerfile`) build definitions live
-under `docker/`; only shadowquic uses a published image directly. Pass Docker
+under `docker/`. Pass Docker
 build arguments such as
+`--build-arg SHADOWQUIC_REF=<tag-or-branch>`,
 `--build-arg MIHOMO_REF=<tag-or-branch>`, or
 `--build-arg QUICPROXY_REF=<tag-or-branch>` when selecting an endpoint version.

@@ -1,19 +1,21 @@
-FROM alpine:latest AS downloader
+FROM rust:1-bookworm AS builder
 
-ARG TARGETARCH
-RUN apk add --no-cache ca-certificates curl
-RUN build_arch="${TARGETARCH:-$(apk --print-arch)}" \
-    && case "${build_arch}" in \
-      amd64|x86_64) release_arch=x86_64 ;; \
-      arm64|aarch64) release_arch=aarch64 ;; \
-      *) echo "unsupported architecture: ${build_arch}" >&2; exit 1 ;; \
-    esac \
-    && curl --fail --location --retry 3 \
-      --output /usr/local/bin/clash-rs \
-      "https://github.com/ibigbug/clash-rs/releases/latest/download/clash-rs-${release_arch}-unknown-linux-musl" \
-    && chmod 0755 /usr/local/bin/clash-rs
+ARG CLASH_RS_REPOSITORY=https://github.com/ibigbug/clash-rs.git
+ARG CLASH_RS_REF=master
+ARG CARGO_BUILD_JOBS=4
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends clang cmake git libclang-dev pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 --branch "${CLASH_RS_REF}" "${CLASH_RS_REPOSITORY}" /src
+WORKDIR /src
+RUN CLASH_GIT_REF="refs/heads/${CLASH_RS_REF}" \
+    CLASH_GIT_SHA="$(git rev-parse HEAD)" \
+    cargo build --release --locked --package clash-rs \
+    --no-default-features --features standard,aws-lc-rs
 
-FROM alpine:latest
-RUN apk add --no-cache ca-certificates tzdata
-COPY --from=downloader /usr/local/bin/clash-rs /usr/local/bin/clash-rs
+FROM debian:bookworm-slim
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends ca-certificates tzdata \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /src/target/release/clash-rs /usr/local/bin/clash-rs
 ENTRYPOINT ["/usr/local/bin/clash-rs"]

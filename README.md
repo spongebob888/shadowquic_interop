@@ -11,7 +11,7 @@ The runnable matrix currently contains:
 | shadowquic | yes | yes | Built from upstream `main` |
 | QuicProxy | yes | yes | Built from upstream `master` |
 | mihomo Meta | yes | yes | Built from upstream `Meta` |
-| clash-rs | yes | no | Built from the latest GitHub release |
+| clash-rs | yes | no | Built from upstream `master` |
 
 ShadowQUIC is built locally from the latest upstream `main` branch as
 `shadowquic-interop/shadowquic:latest`. Normal runs rebuild it without Docker's
@@ -22,9 +22,11 @@ Mihomo is built explicitly from its
 contains the ShadowQUIC outbound and listener implementations; the `main`
 branch does not currently expose them.
 
-Clash-rs participates as a client only. The runner builds a local image from
-the latest upstream GitHub release binary, which includes the ShadowQUIC
-outbound, but clash-rs does not provide a ShadowQUIC server implementation.
+Clash-rs participates as a client only. The runner compiles a local image from
+the upstream [`master` branch](https://github.com/ibigbug/clash-rs/tree/master)
+with standard protocols and AWS-LC enabled, including the ShadowQUIC outbound.
+The embedded dashboard is omitted. Clash-rs does not provide a ShadowQUIC
+server implementation.
 
 The specification's ProxyPen link contains a username typo. The runner builds
 the active project at

@@ -109,11 +109,11 @@ IMPLEMENTATIONS: dict[str, Implementation] = {
     "clash-rs": Implementation(
         key="clash-rs",
         name="clash-rs",
-        source="https://github.com/ibigbug/clash-rs/releases/latest",
+        source="https://github.com/ibigbug/clash-rs/tree/master",
         image="shadowquic-interop/clash-rs:latest",
         config_format="yaml",
         server=False,
-        note="Built locally from the latest GitHub release. ShadowQUIC is supported as an outbound only.",
+        note="Built locally from the upstream master branch. ShadowQUIC is supported as an outbound only.",
     ),
 }
 
